@@ -1,0 +1,323 @@
+#!/usr/bin/env python3
+"""
+Meeting Pipeline: Transcribe → Summarize → Add to Notion
+
+Complete workflow for processing meeting recordings:
+1. Transcribe audio using Whisper
+2. Summarize transcript using Claude API  
+3. Create structured notes in Notion
+"""
+
+import argparse
+import sys
+from pathlib import Path
+from datetime import datetime
+import logging
+from typing import Optional, Dict, Any
+import yaml
+
+# Import the transcriber
+try:
+    from .whisper_transcriber import WhisperTranscriber
+    from .integrations.claude_summarizer import ClaudeSummarizer
+    from .integrations.notion_client import NotionClient
+except ImportError:
+    # Fallback for when running directly
+    sys.path.append(str(Path(__file__).parent.parent))
+    from src.whisper_transcriber import WhisperTranscriber
+    from src.integrations.claude_summarizer import ClaudeSummarizer
+    from src.integrations.notion_client import NotionClient
+
+
+def setup_logging(verbose: bool = False) -> None:
+    """Set up logging configuration."""
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+
+def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """Load configuration from YAML file."""
+    if config_path is None:
+        config_path = Path(__file__).parent.parent / 'config' / 'pipeline_config.yaml'
+    
+    if not Path(config_path).exists():
+        logging.warning(f"Config file not found: {config_path}")
+        return {}
+    
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
+
+
+def find_audio_file(filename: str) -> Optional[Path]:
+    """
+    Find audio file in audio_input folder first, then current directory.
+    """
+    # Check audio_input folder first
+    audio_input_path = Path('audio_input') / filename
+    if audio_input_path.exists():
+        return audio_input_path
+    
+    # Check current directory
+    current_dir_path = Path(filename)
+    if current_dir_path.exists():
+        return current_dir_path
+    
+    # Check if it's already an absolute path
+    abs_path = Path(filename)
+    if abs_path.exists():
+        return abs_path
+    
+    return None
+
+
+def process_meeting(
+    audio_file: Path,
+    config: Dict[str, Any],
+    whisper_model: str = 'base',
+    skip_transcribe: bool = False,
+    skip_summarize: bool = False,
+    skip_notion: bool = False,
+    no_archive: bool = False
+) -> Dict[str, Any]:
+    """
+    Process a meeting through the complete pipeline.
+    
+    Returns:
+        Dictionary with results from each step
+    """
+    results = {
+        'audio_file': str(audio_file),
+        'timestamp': datetime.now().isoformat(),
+        'transcript': None,
+        'summary': None,
+        'notion_page': None,
+        'errors': []
+    }
+    
+    logging.info(f"Starting meeting pipeline for: {audio_file}")
+    
+    # Step 1: Transcription
+    if not skip_transcribe:
+        try:
+            logging.info("Step 1: Transcribing audio...")
+            transcriber = WhisperTranscriber(model_name=whisper_model)
+            transcript_result = transcriber.transcribe_file(str(audio_file))
+            results['transcript'] = transcript_result['text']
+            logging.info("✓ Transcription completed")
+        except Exception as e:
+            error_msg = f"Transcription failed: {str(e)}"
+            logging.error(error_msg)
+            results['errors'].append(error_msg)
+            return results
+    else:
+        # Load existing transcript if skipping transcription
+        # Look for any transcript file matching the audio file name
+        transcriptions_dir = Path('transcriptions')
+        transcript_files = list(transcriptions_dir.glob(f"{audio_file.stem}_transcription_*.txt"))
+        
+        if transcript_files:
+            # Use the most recent transcript file
+            transcript_file = max(transcript_files, key=lambda f: f.stat().st_mtime)
+            results['transcript'] = transcript_file.read_text()
+            logging.info(f"Using existing transcript: {transcript_file}")
+        else:
+            results['errors'].append(f"No existing transcript found for {audio_file.stem}")
+            return results
+    
+    # Step 2: Summarization
+    if not skip_summarize and results['transcript']:
+        try:
+            logging.info("Step 2: Generating summary with Claude...")
+            summarizer = ClaudeSummarizer(config.get('claude', {}))
+            results['summary'] = summarizer.summarize_meeting(results['transcript'])
+            logging.info("✓ Summary generated")
+        except Exception as e:
+            error_msg = f"Summarization failed: {str(e)}"
+            logging.error(error_msg)
+            results['errors'].append(error_msg)
+    
+    # Step 2.5: Save summary to file
+    if results['summary']:
+        try:
+            # Create summaries directory if it doesn't exist
+            summaries_dir = Path('summaries')
+            summaries_dir.mkdir(exist_ok=True)
+            
+            # Generate summary filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            summary_file = summaries_dir / f"{audio_file.stem}_summary_{timestamp}.txt"
+            
+            # Write summary file
+            summary_content = f"""Meeting Summary: {audio_file.stem}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Audio File: {audio_file}
+Model: Claude ({config.get('claude', {}).get('model', 'claude-3-haiku-20240307')})
+
+{'-' * 50}
+SUMMARY
+{'-' * 50}
+
+{results['summary']}
+
+{'-' * 50}
+FULL TRANSCRIPT  
+{'-' * 50}
+
+{results['transcript'] or 'No transcript available'}
+"""
+            
+            summary_file.write_text(summary_content, encoding='utf-8')
+            results['summary_file'] = str(summary_file)
+            logging.info(f"✓ Summary saved to: {summary_file}")
+            
+        except Exception as e:
+            error_msg = f"Failed to save summary file: {str(e)}"
+            logging.error(error_msg)
+            results['errors'].append(error_msg)
+    
+    # Step 3: Add to Notion
+    if not skip_notion and results['summary']:
+        try:
+            logging.info("Step 3: Creating Notion page...")
+            notion_client = NotionClient(config.get('notion', {}))
+            page_url = notion_client.create_meeting_page(
+                title=f"Meeting: {audio_file.stem}",
+                transcript=results['transcript'],
+                summary=results['summary'],
+                audio_file=str(audio_file)
+            )
+            results['notion_page'] = page_url
+            logging.info(f"✓ Notion page created: {page_url}")
+        except Exception as e:
+            error_msg = f"Notion integration failed: {str(e)}"
+            logging.error(error_msg)
+            results['errors'].append(error_msg)
+    
+    # Step 4: Archive processed audio file
+    if not results['errors'] and not no_archive and config.get('pipeline', {}).get('archive_processed', True):
+        try:
+            archive_dir = Path('archive')
+            archive_dir.mkdir(exist_ok=True)
+            
+            # Generate archive filename with processing date
+            timestamp = datetime.now().strftime('%Y%m%d')
+            archive_name = f"{audio_file.stem}_processed_{timestamp}{audio_file.suffix}"
+            archive_path = archive_dir / archive_name
+            
+            # Move file to archive (only if it's in audio_input)
+            if 'audio_input' in str(audio_file):
+                import shutil
+                shutil.move(str(audio_file), str(archive_path))
+                results['archived_file'] = str(archive_path)
+                logging.info(f"✓ Audio file archived: {archive_path}")
+            else:
+                logging.info("Audio file not in audio_input/, skipping archive")
+                
+        except Exception as e:
+            error_msg = f"Failed to archive audio file: {str(e)}"
+            logging.error(error_msg)
+            results['errors'].append(error_msg)
+    
+    return results
+
+
+def main():
+    """Main pipeline entry point."""
+    parser = argparse.ArgumentParser(
+        description="Meeting Pipeline: Transcribe → Summarize → Add to Notion",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s meeting.m4a                    # Full pipeline with default settings
+  %(prog)s meeting.m4a --model large      # Use large Whisper model
+  %(prog)s meeting.m4a --skip-notion      # Skip Notion integration
+  %(prog)s meeting.m4a --config my.yaml   # Use custom config file
+        """
+    )
+    
+    # Input arguments
+    parser.add_argument('filename', help='Audio file to process')
+    parser.add_argument('--config', help='Path to configuration file')
+    
+    # Whisper options
+    parser.add_argument('--model', choices=['tiny', 'base', 'small', 'medium', 'large'],
+                       default='base', help='Whisper model to use (default: base)')
+    
+    # Pipeline control
+    parser.add_argument('--skip-transcribe', action='store_true', 
+                       help='Skip transcription (use existing transcript)')
+    parser.add_argument('--skip-summarize', action='store_true',
+                       help='Skip Claude summarization')
+    parser.add_argument('--skip-notion', action='store_true',
+                       help='Skip Notion integration')
+    parser.add_argument('--no-archive', action='store_true',
+                       help='Don\'t archive processed audio files')
+    
+    # Logging
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
+    
+    args = parser.parse_args()
+    
+    setup_logging(args.verbose)
+    
+    # Load configuration
+    try:
+        config = load_config(args.config)
+    except Exception as e:
+        logging.error(f"Failed to load configuration: {e}")
+        sys.exit(1)
+    
+    # Find audio file
+    audio_file = find_audio_file(args.filename)
+    if not audio_file:
+        logging.error(f"Audio file not found: {args.filename}")
+        sys.exit(1)
+    
+    # Process the meeting
+    results = process_meeting(
+        audio_file=audio_file,
+        config=config,
+        whisper_model=args.model,
+        skip_transcribe=args.skip_transcribe,
+        skip_summarize=args.skip_summarize,
+        skip_notion=args.skip_notion,
+        no_archive=args.no_archive
+    )
+    
+    # Print results
+    print("\n" + "="*50)
+    print("MEETING PIPELINE RESULTS")
+    print("="*50)
+    
+    if results['transcript']:
+        print(f"✓ Transcript: {len(results['transcript'])} characters")
+    
+    if results['summary']:
+        print(f"✓ Summary: Generated")
+        if results.get('summary_file'):
+            print(f"✓ Summary File: {results['summary_file']}")
+        print("\nSUMMARY:")
+        print("-" * 30)
+        print(results['summary'])
+    
+    if results['notion_page']:
+        print(f"✓ Notion: {results['notion_page']}")
+    
+    if results.get('archived_file'):
+        print(f"✓ Archived: {results['archived_file']}")
+    
+    if results['errors']:
+        print(f"\n⚠ Errors: {len(results['errors'])}")
+        for error in results['errors']:
+            print(f"  - {error}")
+    
+    # Exit with error code if there were issues
+    sys.exit(1 if results['errors'] else 0)
+
+
+if __name__ == "__main__":
+    main()

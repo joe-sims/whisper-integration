@@ -205,6 +205,20 @@ winget install ffmpeg
 
 **Memory issues with large models**: Use smaller models (tiny, base) for systems with limited RAM.
 
+## Meeting Pipeline
+
+For advanced workflows, see the **Meeting Pipeline** that combines transcription with AI summarization and Notion integration:
+
+```bash
+# Install pipeline dependencies
+pip install -r requirements-pipeline.txt
+
+# Full workflow: Transcribe → Summarize → Add to Notion
+python3 src/meeting_pipeline.py meeting.m4a
+```
+
+See [PIPELINE.md](PIPELINE.md) for complete setup and usage instructions.
+
 ## Acknowledgments
 
 Built on OpenAI's Whisper model for state-of-the-art speech recognition.
