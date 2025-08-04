@@ -78,8 +78,8 @@ python3 src/cli.py audio_file.m4a
 # Batch process all files in a directory
 python3 src/cli.py --batch audio_input/
 
-# Text-only output (no timestamps)
-python3 src/cli.py audio_file.m4a --no-timestamps
+# Include timestamped segments
+python3 src/cli.py audio_file.m4a --timestamps
 ```
 
 ### Advanced Options
@@ -105,7 +105,8 @@ python3 src/cli.py audio_file.m4a --verbose
 | `--model` | Whisper model size (tiny, base, small, medium, large) | base |
 | `--fast` | Use tiny model for fast processing | - |
 | `--batch DIR` | Process all audio files in directory | - |
-| `--no-timestamps` | Skip timestamped segments | False |
+| `--timestamps` | Include timestamped segments | False |
+| `--no-timestamps` | Skip timestamped segments (backwards compatibility) | - |
 | `--language` | Force specific language (e.g., "en", "es", "fr") | auto-detect |
 | `--task` | Task to perform (transcribe, translate) | transcribe |
 | `--verbose, -v` | Enable detailed logging | False |
@@ -127,7 +128,7 @@ Each file contains:
 - Full transcription text
 - Generation timestamp and model used
 - Detected language
-- Timestamped segments (unless --no-timestamps is used)
+- Timestamped segments (only when --timestamps is used)
 
 ## Project Structure
 

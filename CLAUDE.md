@@ -56,8 +56,8 @@ python3 src/cli.py my_recording.m4a --fast
 # High accuracy with large model
 python3 src/cli.py my_recording.m4a --model large
 
-# Text only (no timestamps)
-python3 src/cli.py my_recording.m4a --no-timestamps
+# Include timestamps
+python3 src/cli.py my_recording.m4a --timestamps
 
 # Batch process all files in audio_input/
 python3 src/cli.py --batch audio_input/
@@ -70,7 +70,8 @@ python3 src/cli.py my_recording.m4a --language en
 - `--model {tiny,base,small,medium,large}`: Choose Whisper model (default: base)
 - `--fast`: Fast mode (equivalent to --model tiny)
 - `--batch DIR`: Process all audio files in directory
-- `--no-timestamps`: Skip timestamped segments
+- `--timestamps`: Include timestamped segments (default: disabled)
+- `--no-timestamps`: Skip timestamped segments (backwards compatibility)
 - `--language LANGUAGE`: Force specific language (e.g., "en", "es", "fr")  
 - `--task {transcribe,translate}`: Task to perform
 - `--verbose, -v`: Enable detailed logging
@@ -81,7 +82,7 @@ Output: Creates a timestamped `.txt` file in the `transcriptions/` subfolder wit
 - Full transcription text
 - Generation timestamp and model used
 - Detected language
-- Timestamped segments
+- Timestamped segments (when --timestamps flag is used)
 
 ## Model Selection
 

@@ -235,11 +235,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s audio.m4a                          # Transcribe with default base model
+  %(prog)s audio.m4a                          # Transcribe with default base model (text only)
   %(prog)s audio.m4a --model tiny --fast      # Fast transcription with tiny model
   %(prog)s audio.m4a --model large            # High accuracy with large model
   %(prog)s --batch audio_input/               # Transcribe all files in directory
-  %(prog)s audio.m4a --no-timestamps          # Text only, no timestamps
+  %(prog)s audio.m4a --timestamps             # Include timestamped segments
         """
     )
     
@@ -254,8 +254,10 @@ Examples:
                        help='Fast mode (equivalent to --model tiny, affects output filename)')
     
     # Output options
+    parser.add_argument('--timestamps', action='store_true', 
+                       help='Include timestamped segments in output')
     parser.add_argument('--no-timestamps', action='store_true', 
-                       help='Skip timestamped segments in output')
+                       help='Skip timestamped segments in output (for backwards compatibility)')
     
     # Whisper options
     parser.add_argument('--language', help='Force specific language (e.g., "en", "es", "fr")')
@@ -281,10 +283,13 @@ Examples:
     if args.task:
         transcribe_kwargs['task'] = args.task
     
+    # Determine timestamp behavior - default to no timestamps unless explicitly requested
+    include_timestamps = args.timestamps and not args.no_timestamps
+    
     # Handle batch mode
     if args.batch:
         transcribe_batch(args.batch, args.model, 
-                        with_timestamps=not args.no_timestamps, **transcribe_kwargs)
+                        with_timestamps=include_timestamps, **transcribe_kwargs)
         return
     
     # Handle single file
@@ -295,7 +300,7 @@ Examples:
     success = transcribe_single_file(
         args.filename, args.model, 
         fast_mode=args.fast,
-        with_timestamps=not args.no_timestamps,
+        with_timestamps=include_timestamps,
         **transcribe_kwargs
     )
     
