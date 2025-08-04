@@ -29,21 +29,20 @@ pip install "numpy<2.3"
 
 ## Running Transcriptions
 
-The project requires ffmpeg for audio processing. A local copy is included in `bin/ffmpeg`.
+The project requires ffmpeg for audio processing. Users must install ffmpeg system-wide.
 
 ## File Organization
 
 The project uses an organized folder structure:
 - `audio_input/`: Place audio files here for transcription
 - `transcriptions/`: Generated transcription files are saved here
-- `bin/`: Contains local ffmpeg binary
 
 ## Unified CLI Interface
 
 The project now uses a unified CLI script (`src/cli.py`) that replaces the old separate scripts with enhanced functionality:
 
 ```bash
-PATH="/Users/joesims/whisper-integration/bin:$PATH" python3 src/cli.py <audio_filename> [OPTIONS]
+python3 src/cli.py <audio_filename> [OPTIONS]
 ```
 
 ### Basic Examples:

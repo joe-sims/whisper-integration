@@ -13,13 +13,36 @@ A Python wrapper around OpenAI's Whisper model for converting audio files to tex
 
 ## Installation
 
+### Prerequisites
+
+**ffmpeg** is required for audio processing. Install it first:
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
+
+**Windows:**
+Download from [ffmpeg.org](https://ffmpeg.org/download.html) or use:
+```bash
+winget install ffmpeg
+```
+
+### Install the Project
+
 1. Clone this repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/joe-sims/whisper-integration.git
 cd whisper-integration
 ```
 
-2. Install dependencies:
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
@@ -116,7 +139,6 @@ whisper-integration/
 │   └── __init__.py
 ├── audio_input/               # Place audio files here
 ├── transcriptions/            # Generated transcription files
-├── bin/                       # Local ffmpeg binary
 ├── requirements.txt
 └── README.md
 ```
@@ -144,7 +166,7 @@ The main transcription class with three key methods:
 ## Requirements
 
 - Python 3.7+
-- ffmpeg (included in `bin/` directory)
+- ffmpeg (system installation required)
 - Dependencies listed in `requirements.txt`
 
 ## License
@@ -168,9 +190,16 @@ MIT License - see LICENSE file for details.
 pip install "numpy<2.3"
 ```
 
-**ffmpeg not found**: The project includes a local ffmpeg binary in `bin/`. Ensure it's executable:
+**ffmpeg not found**: Ensure ffmpeg is installed on your system:
 ```bash
-chmod +x bin/ffmpeg
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian  
+sudo apt install ffmpeg
+
+# Windows
+winget install ffmpeg
 ```
 
 **Memory issues with large models**: Use smaller models (tiny, base) for systems with limited RAM.

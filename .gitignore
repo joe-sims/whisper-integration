@@ -84,6 +84,10 @@ transcriptions/*.txt
 # Model cache (Whisper downloads models to cache)
 ~/.cache/whisper/
 
+# ffmpeg binaries (users should install system-wide)
+bin/ffmpeg*
+ffmpeg*
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
