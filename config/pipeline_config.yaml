@@ -14,8 +14,8 @@ claude:
 # Notion Integration Configuration
 notion:
   # Get your token from: https://www.notion.so/my-integrations
-  token: "ntn_w35595809222LKfvW7HILI3qyIEpVfIP3mjDJfFa2AibBc" # Or set NOTION_TOKEN env var
-  database_id: "2450d42ae4fa80f6a4b6ef1d40403a37" # Or set NOTION_DATABASE_ID env var
+  token: "your-notion-token-here" # Or set NOTION_TOKEN env var
+  database_id: "your-notion-database-id" # Or set NOTION_DATABASE_ID env var
   page_template: "meeting" # Options: meeting, simple, detailed
 
 # Whisper Configuration
