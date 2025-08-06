@@ -1,10 +1,11 @@
 """
-Claude API integration for meeting summarization.
+Claude API integration for meeting summarization with role-based prompting.
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import logging
+from enum import Enum
 
 try:
     import anthropic
@@ -12,16 +13,21 @@ except ImportError:
     anthropic = None
 
 
+class MeetingType(Enum):
+    """Meeting types for specialized processing."""
+    ONE_ON_ONE = "1:1"
+    TEAM_MEETING = "team_meeting"
+    FORECAST = "forecast"
+    CUSTOMER = "customer"
+    TECHNICAL = "technical"
+    STRATEGIC = "strategic"
+
+
 class ClaudeSummarizer:
-    """Handles meeting summarization using Claude API."""
+    """Handles meeting summarization using Claude API with role-based prompting."""
     
     def __init__(self, config: Dict[str, Any]):
-        """
-        Initialize Claude summarizer.
-        
-        Args:
-            config: Configuration dictionary containing Claude settings
-        """
+        """Initialize Claude summarizer with role-based configuration."""
         if anthropic is None:
             raise ImportError(
                 "anthropic package not installed. Run: pip install anthropic"
@@ -36,156 +42,263 @@ class ClaudeSummarizer:
             )
         
         self.client = anthropic.Anthropic(api_key=api_key)
-        self.model = config.get('model', 'claude-3-haiku-20240307')
-        self.max_tokens = config.get('max_tokens', 1000)
+        self.model = config.get('model', 'claude-3-5-sonnet-20241022')  # Updated to latest
+        self.max_tokens = config.get('max_tokens', 2000)  # Increased for detailed summaries
         self.temperature = config.get('temperature', 0.1)
         
-        # Summary templates
-        self.templates = {
-            'default': self._get_default_template(),
-            'business': self._get_business_template(),
-            'technical': self._get_technical_template(),
-            'personal': self._get_personal_template()
+        # User context for personalization
+        self.user_context = config.get('user_context', {
+            'role': 'Director of Solutions Engineering',
+            'region': 'EMEA',
+            'team_size': 6,
+            'company': 'Entrust'
+        })
+        
+        # Define role prompts for different meeting types
+        self.role_prompts = self._initialize_role_prompts()
+        
+    def _initialize_role_prompts(self) -> Dict[MeetingType, str]:
+        """Initialize system prompts for different roles."""
+        return {
+            MeetingType.ONE_ON_ONE: """You are an experienced engineering manager specializing in team development and performance management. You excel at identifying coaching opportunities, tracking commitments, and ensuring clear action items from 1:1 discussions. You understand the importance of both technical growth and soft skills development for solutions engineers.""",
+            
+            MeetingType.TEAM_MEETING: """You are a senior solutions engineering leader focused on team coordination, delivery excellence, and cross-functional collaboration. You understand how to balance customer needs, technical requirements, and team capacity while maintaining high morale and productivity.""",
+            
+            MeetingType.FORECAST: """You are a seasoned sales operations analyst with deep expertise in pipeline management and revenue forecasting. You understand the nuances of solution engineering metrics, deal progression, and risk assessment in enterprise software sales.""",
+            
+            MeetingType.CUSTOMER: """You are a customer-focused solutions architect who understands both technical requirements and business value. You excel at identifying customer pain points, mapping solutions to business outcomes, and ensuring successful technical engagement strategies.""",
+            
+            MeetingType.TECHNICAL: """You are a principal solutions engineer with expertise in enterprise security and PKI solutions. You understand complex technical architectures, integration challenges, and can identify both immediate solutions and long-term technical strategies.""",
+            
+            MeetingType.STRATEGIC: """You are a strategic business advisor specializing in EMEA markets and enterprise technology sales. You understand regional dynamics, competitive positioning, and how to align technical capabilities with market opportunities."""
         }
-        
-        self.template_type = config.get('template_type', 'business')
-        
-    def _get_default_template(self) -> str:
-        """Default summarization template."""
-        return """
-Please provide a concise summary of this meeting transcript using proper markdown formatting that Notion can interpret:
+    
+    def _get_user_message(self, meeting_type: MeetingType, transcript: str) -> str:
+        """Create the user message with instructions based on meeting type."""
+        base_instructions = f"""
+I need you to summarize the following {meeting_type.value} meeting transcript. 
+Context: I'm the {self.user_context['role']} for {self.user_context['region']} at {self.user_context['company']}, managing a team of {self.user_context['team_size']} Solutions Engineers.
 
-## Key Topics Discussed
-- List the main topics and discussions
+Please provide a structured summary using Notion-compatible markdown formatting:
+"""
+        
+        # Meeting-specific instructions
+        type_instructions = {
+            MeetingType.ONE_ON_ONE: """
+## 1:1 Meeting Summary
 
-## Important Decisions Made
-- Any decisions or agreements reached
+## Employee Overview
+- **Team Member:** [Name]
+- **Date:** [Extract if mentioned]
+- **Meeting Cadence:** [Weekly/Fortnightly/Monthly]
+
+## Discussion Highlights
+- **Performance/Development:** [Key points about growth, achievements, or areas for improvement]
+- **Current Projects:** [Status updates on key initiatives]
+- **Challenges/Blockers:** [Any issues raised and support needed]
+
+## Coaching & Development
+- **Strengths Demonstrated:** [Specific examples]
+- **Growth Areas:** [Skills or behaviors to develop]
+- **Career Progression:** [Any discussions about next steps]
 
 ## Action Items
-- Tasks assigned with owners (if mentioned)
-- Deadlines (if mentioned)
+- [ ] **[Manager Action]** - Due: [Date]
+- [ ] **[Employee Action]** - Due: [Date]
 
-## Next Steps
-- Follow-up meetings or actions planned
+## Follow-up for Next 1:1
+- [Topics to revisit]
+- [Progress to check]
 
-Use proper markdown headers (##) and bullet points (-). Keep the summary clear and well-structured.
-        """.strip()
+## Manager Notes (Confidential)
+- [Any observations about engagement, motivation, or concerns]
+""",
+            
+            MeetingType.FORECAST: """
+## Forecast Call Summary
+
+## Forecast Overview
+- **Period:** [Quarter/Month]
+- **Region:** EMEA
+- **Call Date:** [Date]
+
+## Pipeline Summary
+- **Committed:** €[Amount] ([X] deals)
+- **Best Case:** €[Amount] ([X] deals)
+- **Pipeline Coverage:** [X:1 ratio]
+
+## Key Deals
+| Deal | Value | Stage | Close Date | Risk Level | Next Steps |
+|------|-------|-------|------------|------------|------------|
+| [Customer] | €[Value] | [Stage] | [Date] | [H/M/L] | [Action] |
+
+## Changes Since Last Forecast
+- **New Additions:** [Deals added to forecast]
+- **Slipped Deals:** [Deals pushed out with reasons]
+- **Lost/Removed:** [Deals removed with reasons]
+
+## Risk Assessment
+- **High Risk Deals:** [List with mitigation plans]
+- **Dependencies:** [Technical, legal, or commercial blockers]
+
+## Resource Requirements
+- **SE Capacity:** [Any resource constraints]
+- **Technical Support:** [Specialist needs]
+
+## Action Items
+- [ ] **[Task]** - Owner: [Name] - Due: [Date]
+
+## Commitments Made
+- [Specific commitments for the period]
+""",
+            
+            MeetingType.TEAM_MEETING: """
+## Team Meeting Summary
+
+## Meeting Details
+- **Date:** [Date]
+- **Attendees:** [List team members present]
+- **Type:** [Weekly sync/Monthly review/Special topic]
+
+## Team Updates
+- **Wins/Successes:** [Celebrate achievements]
+- **Current Priorities:** [Top 3-5 team focuses]
+
+## Project Status
+| Project | Owner | Status | Next Milestone | Risks |
+|---------|-------|---------|----------------|-------|
+| [Name] | [SE] | [RAG] | [Date/Action] | [Issues] |
+
+## Cross-functional Topics
+- **Product Updates:** [Relevant product changes]
+- **Process Changes:** [Any new procedures]
+- **Training Needs:** [Skills gaps identified]
+
+## Team Health
+- **Morale Indicators:** [Observations]
+- **Workload Balance:** [Any concerns]
+
+## Action Items
+- [ ] **[Task]** - Owner: [Name] - Due: [Date]
+
+## Next Meeting Focus
+- [Topics for next sync]
+"""
+        }
+        
+        instructions = type_instructions.get(
+            meeting_type, 
+            self._get_generic_instructions()
+        )
+        
+        return f"""{base_instructions}
+
+{instructions}
+
+---
+**Formatting Guidelines:**
+- Use proper markdown headers (##, ###)
+- Bold important labels using **text**
+- Use tables where appropriate
+- Include checkbox format (- [ ]) for all action items
+- If information isn't mentioned, omit the section
+- Keep language professional but conversational
+- Use British English spelling
+
+**Transcript:**
+{transcript}"""
     
-    def _get_business_template(self) -> str:
-        """Business meeting template."""
+    def _get_generic_instructions(self) -> str:
+        """Generic instructions for unspecified meeting types."""
         return """
-Please analyze this business meeting transcript and provide a structured summary:
-
 ## Meeting Summary
 
+### Overview
+- **Date:** [Extract if mentioned]
+- **Attendees:** [List if identifiable]
+- **Purpose:** [Main objective]
+
 ### Key Discussion Points
-- List the main topics and discussions
+- **[Topic 1]:** [Summary and outcome]
+- **[Topic 2]:** [Summary and outcome]
 
 ### Decisions Made
-- Any decisions or agreements reached
+- [List key decisions with rationale]
 
 ### Action Items
-- Tasks assigned with owners (if mentioned)
-- Deadlines (if mentioned)
-
-### Financial/Business Impact
-- Revenue, costs, or business metrics mentioned
-- Deal statuses or customer updates
+- [ ] **[Task]** - Owner: [Name] - Due: [Date]
 
 ### Next Steps
-- Follow-up meetings or actions planned
-
-### Risks/Concerns
-- Any issues or concerns raised
-
-Keep it professional and concise.
-        """.strip()
+- [Follow-up actions or meetings]
+"""
     
-    def _get_technical_template(self) -> str:
-        """Technical meeting template."""
-        return """
-Please summarize this technical meeting transcript:
-
-## Technical Meeting Summary
-
-### Topics Covered
-- Main technical discussions
-
-### Technical Decisions
-- Architecture, implementation, or technical choices made
-
-### Issues/Blockers
-- Problems identified and solutions discussed
-
-### Action Items
-- Development tasks and assignments
-
-### Next Steps
-- Technical milestones and timelines
-
-Focus on technical details and implementation aspects.
-        """.strip()
-    
-    def _get_personal_template(self) -> str:
-        """Personal/casual meeting template."""
-        return """
-Please provide a friendly summary of this conversation:
-
-## Conversation Summary
-
-### Main Topics
-- What was discussed
-
-### Important Points
-- Key information shared
-
-### Plans/Next Steps
-- Any plans or follow-ups mentioned
-
-Keep the tone casual and conversational.
-        """.strip()
+    def detect_meeting_type(self, transcript: str) -> MeetingType:
+        """Detect meeting type from transcript content."""
+        transcript_lower = transcript.lower()
+        
+        # Detection logic based on keywords
+        if any(phrase in transcript_lower for phrase in ['1:1', 'one on one', 'performance review', 'career development']):
+            return MeetingType.ONE_ON_ONE
+        elif any(phrase in transcript_lower for phrase in ['forecast', 'pipeline', 'commit', 'quarter close']):
+            return MeetingType.FORECAST
+        elif any(phrase in transcript_lower for phrase in ['customer', 'client', 'prospect', 'demo']):
+            return MeetingType.CUSTOMER
+        elif any(phrase in transcript_lower for phrase in ['architecture', 'integration', 'api', 'technical design']):
+            return MeetingType.TECHNICAL
+        elif any(phrase in transcript_lower for phrase in ['strategy', 'market', 'competitive', 'positioning']):
+            return MeetingType.STRATEGIC
+        else:
+            return MeetingType.TEAM_MEETING
     
     def summarize_meeting(
         self, 
         transcript: str, 
-        template_type: Optional[str] = None,
+        meeting_type: Optional[MeetingType] = None,
         custom_prompt: Optional[str] = None
     ) -> str:
         """
-        Summarize a meeting transcript using Claude.
+        Summarize a meeting transcript using Claude with role-based prompting.
         
         Args:
             transcript: The meeting transcript text
-            template_type: Type of template to use ('default', 'business', 'technical', 'personal')
-            custom_prompt: Custom prompt to override template
+            meeting_type: Type of meeting (auto-detected if not provided)
+            custom_prompt: Custom prompt to override defaults
             
         Returns:
             Generated summary text
         """
-        # Use custom prompt or template
-        if custom_prompt:
-            system_prompt = custom_prompt
-        else:
-            template = template_type or self.template_type
-            system_prompt = self.templates.get(template, self.templates['default'])
+        # Detect meeting type if not provided
+        if meeting_type is None:
+            meeting_type = self.detect_meeting_type(transcript)
+            logging.info(f"Auto-detected meeting type: {meeting_type.value}")
         
-        # Truncate transcript if too long (Claude has context limits)
-        max_transcript_length = 100000  # Adjust based on model limits
+        # Truncate transcript if too long
+        max_transcript_length = 100000
         if len(transcript) > max_transcript_length:
             transcript = transcript[:max_transcript_length] + "\n\n[Transcript truncated...]"
             logging.warning("Transcript truncated due to length limits")
         
         try:
-            logging.debug(f"Sending transcript to Claude (model: {self.model})")
+            # Get role-based system prompt
+            system_prompt = self.role_prompts.get(meeting_type, self.role_prompts[MeetingType.TEAM_MEETING])
+            
+            # Get user message with instructions
+            if custom_prompt:
+                user_message = f"{custom_prompt}\n\nTranscript:\n{transcript}"
+            else:
+                user_message = self._get_user_message(meeting_type, transcript)
+            
+            logging.debug(f"Sending transcript to Claude (model: {self.model}, type: {meeting_type.value})")
             
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
+                system=system_prompt,  # Role-based system prompt
                 messages=[
                     {
                         "role": "user",
-                        "content": f"{system_prompt}\n\nTranscript:\n{transcript}"
+                        "content": user_message
                     }
                 ]
             )
@@ -198,12 +311,14 @@ Keep the tone casual and conversational.
             logging.error(f"Claude API error: {str(e)}")
             raise
     
-    def get_available_templates(self) -> Dict[str, str]:
-        """Return available summary templates."""
-        return {name: template.split('\n')[0] for name, template in self.templates.items()}
+    def create_custom_role(self, role_description: str) -> str:
+        """Create a custom role prompt for specialized meetings."""
+        return f"""You are {role_description}. You bring deep domain expertise and understand the nuances of this specialized area. Your summaries reflect both tactical details and strategic implications."""
     
-    def set_template_type(self, template_type: str) -> None:
-        """Set the default template type."""
-        if template_type not in self.templates:
-            raise ValueError(f"Unknown template type: {template_type}")
-        self.template_type = template_type
+    def get_available_meeting_types(self) -> Dict[str, str]:
+        """Return available meeting types."""
+        return {meeting_type.value: meeting_type.name for meeting_type in MeetingType}
+    
+    def set_user_context(self, context: Dict[str, Any]) -> None:
+        """Update user context for personalization."""
+        self.user_context.update(context)

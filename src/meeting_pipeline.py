@@ -16,16 +16,20 @@ import logging
 from typing import Optional, Dict, Any
 import yaml
 
+# Load environment variables from .env file
+from . import env_loader
+
 # Import the transcriber
 try:
     from .whisper_transcriber import WhisperTranscriber
-    from .integrations.claude_summarizer import ClaudeSummarizer
+    from .integrations.claude_summarizer import ClaudeSummarizer, MeetingType
     from .integrations.notion_client import NotionClient
 except ImportError:
     # Fallback for when running directly
     sys.path.append(str(Path(__file__).parent.parent))
+    from src import env_loader
     from src.whisper_transcriber import WhisperTranscriber
-    from src.integrations.claude_summarizer import ClaudeSummarizer
+    from src.integrations.claude_summarizer import ClaudeSummarizer, MeetingType
     from src.integrations.notion_client import NotionClient
 
 
@@ -78,6 +82,7 @@ def process_meeting(
     audio_file: Path,
     config: Dict[str, Any],
     whisper_model: str = 'base',
+    meeting_type: Optional[str] = None,
     skip_transcribe: bool = False,
     skip_summarize: bool = False,
     skip_notion: bool = False,
@@ -133,7 +138,25 @@ def process_meeting(
         try:
             logging.info("Step 2: Generating summary with Claude...")
             summarizer = ClaudeSummarizer(config.get('claude', {}))
-            results['summary'] = summarizer.summarize_meeting(results['transcript'])
+            
+            # Use provided meeting type or auto-detect from transcript
+            if meeting_type:
+                try:
+                    detected_type = MeetingType(meeting_type)
+                    logging.info(f"Using specified meeting type: {detected_type.value}")
+                except ValueError:
+                    logging.warning(f"Invalid meeting type '{meeting_type}', auto-detecting...")
+                    detected_type = summarizer.detect_meeting_type(results['transcript'])
+                    logging.info(f"Auto-detected meeting type: {detected_type.value}")
+            else:
+                detected_type = summarizer.detect_meeting_type(results['transcript'])
+                logging.info(f"Auto-detected meeting type: {detected_type.value}")
+            
+            results['summary'] = summarizer.summarize_meeting(
+                transcript=results['transcript'],
+                meeting_type=detected_type
+            )
+            results['meeting_type'] = detected_type.value
             logging.info("✓ Summary generated")
         except Exception as e:
             error_msg = f"Summarization failed: {str(e)}"
@@ -184,8 +207,41 @@ FULL TRANSCRIPT
         try:
             logging.info("Step 3: Creating Notion page...")
             notion_client = NotionClient(config.get('notion', {}))
+            # Generate clean meeting title
+            def generate_meeting_title(filename: str) -> str:
+                """Generate a clean meeting title from filename format: date-name-weekly-1-2-1"""
+                # Split by dashes to get parts
+                parts = filename.split('-')
+                
+                if len(parts) < 3:
+                    # Fallback for unexpected format
+                    return filename.replace('_', ' ').replace('-', ' ').title()
+                
+                # Skip date part (first part like "2025-08-04")
+                # Find name (second part)
+                person_name = parts[1].title() if len(parts) > 1 else "Unknown"
+                
+                # Find meeting frequency (third part like "weekly")
+                frequency = parts[2].title() if len(parts) > 2 else ""
+                
+                # Find meeting type (remaining parts like "1-2-1")
+                meeting_type_parts = parts[3:] if len(parts) > 3 else []
+                meeting_type = ':'.join(meeting_type_parts) if meeting_type_parts else ""
+                
+                # Build title based on what we have
+                if meeting_type and frequency:
+                    return f"{person_name} {frequency} {meeting_type}"
+                elif meeting_type:
+                    return f"{person_name} {meeting_type}"
+                elif frequency:
+                    return f"{person_name} {frequency}"
+                else:
+                    return f"{person_name} Meeting"
+            
+            clean_title = generate_meeting_title(audio_file.stem)
+            
             page_url = notion_client.create_meeting_page(
-                title=f"Meeting: {audio_file.stem}",
+                title=clean_title,
                 transcript=results['transcript'],
                 summary=results['summary'],
                 audio_file=str(audio_file)
@@ -232,10 +288,12 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s meeting.m4a                    # Full pipeline with default settings
-  %(prog)s meeting.m4a --model large      # Use large Whisper model
-  %(prog)s meeting.m4a --skip-notion      # Skip Notion integration
-  %(prog)s meeting.m4a --config my.yaml   # Use custom config file
+  %(prog)s meeting.m4a                           # Full pipeline with auto-detection
+  %(prog)s meeting.m4a --model large             # Use large Whisper model
+  %(prog)s meeting.m4a --meeting-type 1:1        # Force 1:1 meeting template
+  %(prog)s meeting.m4a --meeting-type forecast   # Use forecast template
+  %(prog)s meeting.m4a --skip-notion             # Skip Notion integration
+  %(prog)s meeting.m4a --config my.yaml          # Use custom config file
         """
     )
     
@@ -246,6 +304,10 @@ Examples:
     # Whisper options
     parser.add_argument('--model', choices=['tiny', 'base', 'small', 'medium', 'large'],
                        default='base', help='Whisper model to use (default: base)')
+    
+    # Claude options
+    parser.add_argument('--meeting-type', choices=['1:1', 'team_meeting', 'forecast', 'customer', 'technical', 'strategic'],
+                       help='Specify meeting type (auto-detected if not provided)')
     
     # Pipeline control
     parser.add_argument('--skip-transcribe', action='store_true', 
@@ -282,6 +344,7 @@ Examples:
         audio_file=audio_file,
         config=config,
         whisper_model=args.model,
+        meeting_type=getattr(args, 'meeting_type', None),
         skip_transcribe=args.skip_transcribe,
         skip_summarize=args.skip_summarize,
         skip_notion=args.skip_notion,
@@ -298,6 +361,8 @@ Examples:
     
     if results['summary']:
         print(f"✓ Summary: Generated")
+        if results.get('meeting_type'):
+            print(f"✓ Meeting Type: {results['meeting_type']}")
         if results.get('summary_file'):
             print(f"✓ Summary File: {results['summary_file']}")
         print("\nSUMMARY:")

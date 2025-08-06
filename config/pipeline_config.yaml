@@ -4,19 +4,26 @@
 # Claude API Configuration
 claude:
   # Get your API key from: https://console.anthropic.com/
-  # api_key: "your-claude-api-key-here"  # Or set ANTHROPIC_API_KEY env var
-  # model: "claude-3-haiku-20240307" # Fast and cost-effective
-  model: "claude-sonnet-4-20250514" # Latest and highest quality
-  max_tokens: 1000
+  # api_key: ""  # Set ANTHROPIC_API_KEY environment variable instead
+  model: "claude-3-5-sonnet-20241022" # Latest Sonnet model with role-based prompting
+  max_tokens: 2000 # Increased for detailed summaries
   temperature: 0.1
-  template_type: "default" # Options: default, business, technical, personal
+  # User context for personalized summaries
+  user_context:
+    role: "Director of Solutions Engineering"
+    region: "EMEA"
+    team_size: 6
+    company: "Entrust"
 
 # Notion Integration Configuration
 notion:
   # Get your token from: https://www.notion.so/my-integrations
-  token: "your-notion-token-here" # Or set NOTION_TOKEN env var
-  database_id: "your-notion-database-id" # Or set NOTION_DATABASE_ID env var
+  # token: ""  # Set NOTION_TOKEN environment variable instead
+  # database_id: ""  # Set NOTION_DATABASE_ID environment variable instead
   page_template: "meeting" # Options: meeting, simple, detailed
+  # Task database for action items
+  # task_database_id: ""  # Set NOTION_TASK_DATABASE_ID environment variable instead
+  create_tasks: true # Set to false to disable task creation
 
 # Whisper Configuration
 whisper:
