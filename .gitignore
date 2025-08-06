@@ -81,6 +81,10 @@ Thumbs.db
 # Transcription outputs (optional - uncomment if you don't want to track outputs)
 transcriptions/*.txt
 
+# Summary files (contain sensitive meeting information)
+summaries/
+summaries/*.txt
+
 # Model cache (Whisper downloads models to cache)
 ~/.cache/whisper/
 
