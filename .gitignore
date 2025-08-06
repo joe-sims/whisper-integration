@@ -82,8 +82,8 @@ Thumbs.db
 transcriptions/*.txt
 
 # Summary files (contain sensitive meeting information)
-summaries/
 summaries/*.txt
+!summaries/README.md
 
 # Model cache (Whisper downloads models to cache)
 ~/.cache/whisper/
