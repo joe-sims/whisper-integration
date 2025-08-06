@@ -80,6 +80,8 @@ I need you to summarize the following {meeting_type.value} meeting transcript.
 Context: I'm the {self.user_context['role']} for {self.user_context['region']} at {self.user_context['company']}, managing a team of {self.user_context['team_size']} Solutions Engineers.
 
 Please provide a structured summary using Notion-compatible markdown formatting:
+
+IMPORTANT: When creating tables, ensure proper alignment and consistent spacing. Use proper markdown table syntax with aligned pipe characters (|).
 """
         
         # Meeting-specific instructions
@@ -118,9 +120,13 @@ Please provide a structured summary using Notion-compatible markdown formatting:
 - **Pipeline Coverage:** [X:1 ratio]
 
 ## Key Deals
+[Create a well-formatted markdown table with consistent spacing. Use format below:]
+
 | Deal | Value | Stage | Close Date | Risk Level | Next Steps |
 |------|-------|-------|------------|------------|------------|
 | [Customer] | €[Value] | [Stage] | [Date] | [H/M/L] | [Action] |
+
+[Ensure each column is properly aligned and pipe characters are consistently spaced]
 
 ## Changes Since Last Forecast
 - **New Additions:** [Deals added to forecast]
