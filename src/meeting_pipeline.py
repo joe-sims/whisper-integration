@@ -17,7 +17,11 @@ from typing import Optional, Dict, Any
 import yaml
 
 # Load environment variables from .env file
-from . import env_loader
+try:
+    from . import env_loader
+except ImportError:
+    # When running directly, use absolute import
+    import env_loader
 
 # Import the transcriber
 try:
