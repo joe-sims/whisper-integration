@@ -1,15 +1,19 @@
 # Whisper Audio Transcription Integration
 
-A Python wrapper around OpenAI's Whisper model for converting audio files to text with timestamps.
+**v2.0.0** - Professional meeting transcription and summarization with AI-powered role-based analysis.
 
-## Features
+A comprehensive solution that transforms audio recordings into structured meeting notes with intelligent categorization, professional summaries, and seamless Notion integration.
 
-- 🎙️ High-quality audio transcription using OpenAI Whisper
-- ⏱️ Word-level and segment-level timestamps
-- 🔄 Multiple model sizes (tiny to large) for speed/accuracy tradeoffs
-- 📁 Batch processing support
-- 🌍 Multi-language support with auto-detection
-- 📝 Clean text output with organized file structure
+## ✨ Key Features
+
+- 🎙️ **High-quality transcription** using OpenAI Whisper models
+- 🤖 **AI-powered summarization** with Claude using role-based prompts  
+- 📊 **6 specialized meeting types**: 1:1, forecast, customer, technical, strategic, team
+- 🧠 **Auto meeting type detection** from transcript content
+- 📝 **Professional templates** tailored for managers and solutions engineers
+- 🔗 **Notion integration** with automatic task creation and linking
+- 🔒 **Enterprise security** with environment variable credential management
+- ⚡ **Complete pipeline** from audio → transcript → summary → structured notes
 
 ## Installation
 
@@ -205,19 +209,50 @@ winget install ffmpeg
 
 **Memory issues with large models**: Use smaller models (tiny, base) for systems with limited RAM.
 
-## Meeting Pipeline
+## 🚀 Meeting Pipeline (v2.0.0)
 
-For advanced workflows, see the **Meeting Pipeline** that combines transcription with AI summarization and Notion integration:
+The enhanced **Meeting Pipeline** provides intelligent, role-based meeting analysis:
 
+### Quick Start
 ```bash
-# Install pipeline dependencies
-pip install -r requirements-pipeline.txt
+# Set up environment variables (first time only)
+cp .env.example .env  # Edit with your API keys
 
-# Full workflow: Transcribe → Summarize → Add to Notion
+# Full workflow: Transcribe → AI Summary → Notion Integration
 python3 src/meeting_pipeline.py meeting.m4a
+
+# Force specific meeting type
+python3 src/meeting_pipeline.py meeting.m4a --meeting-type 1:1
+python3 src/meeting_pipeline.py forecast.m4a --meeting-type forecast
 ```
 
-See [PIPELINE.md](PIPELINE.md) for complete setup and usage instructions.
+### 🧠 Intelligent Features
+- **Auto-detects meeting type** from content (1:1, forecast, customer, etc.)
+- **Role-based AI summaries** tailored for engineering managers
+- **Action item extraction** with automatic task creation in Notion
+- **Professional formatting** with proper business context
+- **Direct task linking** back to source meeting pages
+
+### 📊 Specialized Meeting Types
+| Type | Use Case | Key Sections |
+|------|----------|--------------|
+| **1:1** | Performance reviews, coaching | Employee overview, development plans, manager notes |
+| **Forecast** | Sales pipeline reviews | Deal tables, risk assessment, commitments |
+| **Customer** | Client meetings, demos | Requirements, solutions mapping, next steps |
+| **Technical** | Architecture discussions | Technical decisions, integration challenges |
+| **Strategic** | Business planning | Market analysis, competitive positioning |
+| **Team** | Weekly syncs, standups | Project status, team health, coordination |
+
+### 🔒 Secure Setup
+```bash
+# Create .env file with your API keys
+ANTHROPIC_API_KEY=your-claude-key
+NOTION_TOKEN=your-notion-token
+NOTION_DATABASE_ID=your-meeting-database-id
+NOTION_TASK_DATABASE_ID=your-task-database-id
+```
+
+All credentials are securely managed via environment variables - no hardcoded secrets!
 
 ## Acknowledgments
 
