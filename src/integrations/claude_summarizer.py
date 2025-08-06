@@ -197,13 +197,14 @@ Please provide a structured summary using Notion-compatible markdown formatting:
 
 ---
 **Formatting Guidelines:**
-- Use proper markdown headers (##, ###)
+- Use consistent ## headers for ALL main sections (never mix ## and ###)
 - Bold important labels using **text**
 - Use tables where appropriate
 - Include checkbox format (- [ ]) for all action items
 - If information isn't mentioned, omit the section
 - Keep language professional but conversational
 - Use British English spelling
+- IMPORTANT: All section headers must be ## (level 2) - no ### headers
 
 **Transcript:**
 {transcript}"""
@@ -213,22 +214,22 @@ Please provide a structured summary using Notion-compatible markdown formatting:
         return """
 ## Meeting Summary
 
-### Overview
+## Overview
 - **Date:** [Extract if mentioned]
 - **Attendees:** [List if identifiable]
 - **Purpose:** [Main objective]
 
-### Key Discussion Points
+## Key Discussion Points
 - **[Topic 1]:** [Summary and outcome]
 - **[Topic 2]:** [Summary and outcome]
 
-### Decisions Made
+## Decisions Made
 - [List key decisions with rationale]
 
-### Action Items
+## Action Items
 - [ ] **[Task]** - Owner: [Name] - Due: [Date]
 
-### Next Steps
+## Next Steps
 - [Follow-up actions or meetings]
 """
     
