@@ -60,7 +60,7 @@ class ClaudeSummarizer:
     def _initialize_role_prompts(self) -> Dict[MeetingType, str]:
         """Initialize system prompts for different roles."""
         return {
-            MeetingType.ONE_ON_ONE: """You are an experienced engineering manager specializing in team development and performance management. You excel at identifying coaching opportunities, tracking commitments, and ensuring clear action items from 1:1 discussions. You understand the importance of both technical growth and soft skills development for solutions engineers.""",
+            MeetingType.ONE_ON_ONE: """You are an experienced senior solutions engineering manager specializing in team development and performance management. You excel at identifying coaching opportunities, tracking commitments, and ensuring clear action items from 1:1 discussions. You understand the importance of both technical growth and soft skills development for solutions engineers.""",
             
             MeetingType.TEAM_MEETING: """You are a senior solutions engineering leader focused on team coordination, delivery excellence, and cross-functional collaboration. You understand how to balance customer needs, technical requirements, and team capacity while maintaining high morale and productivity.""",
             
@@ -68,7 +68,7 @@ class ClaudeSummarizer:
             
             MeetingType.CUSTOMER: """You are a customer-focused solutions architect who understands both technical requirements and business value. You excel at identifying customer pain points, mapping solutions to business outcomes, and ensuring successful technical engagement strategies.""",
             
-            MeetingType.TECHNICAL: """You are a principal solutions engineer with expertise in enterprise security and PKI solutions. You understand complex technical architectures, integration challenges, and can identify both immediate solutions and long-term technical strategies.""",
+            MeetingType.TECHNICAL: """You are a principal solutions engineer with expertise in identity verification solutions. You understand complex technical architectures, integration challenges, and can identify both immediate solutions and long-term technical strategies.""",
             
             MeetingType.STRATEGIC: """You are a strategic business advisor specializing in EMEA markets and enterprise technology sales. You understand regional dynamics, competitive positioning, and how to align technical capabilities with market opportunities."""
         }
@@ -86,11 +86,6 @@ Please provide a structured summary using Notion-compatible markdown formatting:
         type_instructions = {
             MeetingType.ONE_ON_ONE: """
 ## 1:1 Meeting Summary
-
-## Employee Overview
-- **Team Member:** [Name]
-- **Date:** [Extract if mentioned]
-- **Meeting Cadence:** [Weekly/Fortnightly/Monthly]
 
 ## Discussion Highlights
 - **Performance/Development:** [Key points about growth, achievements, or areas for improvement]
@@ -116,11 +111,6 @@ Please provide a structured summary using Notion-compatible markdown formatting:
             
             MeetingType.FORECAST: """
 ## Forecast Call Summary
-
-## Forecast Overview
-- **Period:** [Quarter/Month]
-- **Region:** EMEA
-- **Call Date:** [Date]
 
 ## Pipeline Summary
 - **Committed:** €[Amount] ([X] deals)
@@ -154,11 +144,6 @@ Please provide a structured summary using Notion-compatible markdown formatting:
             
             MeetingType.TEAM_MEETING: """
 ## Team Meeting Summary
-
-## Meeting Details
-- **Date:** [Date]
-- **Attendees:** [List team members present]
-- **Type:** [Weekly sync/Monthly review/Special topic]
 
 ## Team Updates
 - **Wins/Successes:** [Celebrate achievements]
@@ -213,11 +198,6 @@ Please provide a structured summary using Notion-compatible markdown formatting:
         """Generic instructions for unspecified meeting types."""
         return """
 ## Meeting Summary
-
-## Overview
-- **Date:** [Extract if mentioned]
-- **Attendees:** [List if identifiable]
-- **Purpose:** [Main objective]
 
 ## Key Discussion Points
 - **[Topic 1]:** [Summary and outcome]
