@@ -117,6 +117,39 @@ def process_meeting(
             transcript_result = transcriber.transcribe_file(str(audio_file))
             results['transcript'] = transcript_result['text']
             logging.info("✓ Transcription completed")
+            
+            # Step 1.5: Save transcript file immediately (in case later steps fail)
+            try:
+                transcriptions_dir = Path('transcriptions')
+                transcriptions_dir.mkdir(exist_ok=True)
+                
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                transcript_filename = transcriptions_dir / f"{audio_file.stem}_transcription_{timestamp}.txt"
+                
+                # Create transcript content
+                transcript_content = []
+                transcript_content.append(f"Transcription of: {audio_file}")
+                transcript_content.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                transcript_content.append(f"Model: {transcriber.model_name}")
+                transcript_content.append("=" * 50)
+                
+                language = transcript_result.get('language', 'unknown')
+                transcript_content.append(f"Language: {language}")
+                transcript_content.append("")
+                
+                transcript_content.append("Full Text:")
+                transcript_content.append(transcript_result['text'].strip())
+                
+                # Save transcript file
+                with open(transcript_filename, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(transcript_content))
+                
+                results['transcript_file'] = str(transcript_filename)
+                logging.info(f"✓ Transcript saved to: {transcript_filename}")
+                
+            except Exception as e:
+                logging.warning(f"Failed to save transcript file: {e}")
+                # Don't fail the pipeline for this
         except Exception as e:
             error_msg = f"Transcription failed: {str(e)}"
             logging.error(error_msg)
@@ -362,6 +395,8 @@ Examples:
     
     if results['transcript']:
         print(f"✓ Transcript: {len(results['transcript'])} characters")
+        if results.get('transcript_file'):
+            print(f"✓ Transcript File: {results['transcript_file']}")
     
     if results['summary']:
         print(f"✓ Summary: Generated")
