@@ -257,23 +257,27 @@ FULL TRANSCRIPT
             notion_client = NotionClient(config.get('notion', {}))
             # Generate clean meeting title
             def generate_meeting_title(filename: str) -> str:
-                """Generate a clean meeting title from filename format: date-name-weekly-1-2-1"""
+                """Generate a clean meeting title from filename format: 2025-08-06-Name-Weekly-1-1"""
                 # Split by dashes to get parts
                 parts = filename.split('-')
                 
-                if len(parts) < 3:
+                if len(parts) < 4:
                     # Fallback for unexpected format
                     return filename.replace('_', ' ').replace('-', ' ').title()
                 
-                # Skip date part (first part like "2025-08-04")
-                # Find name (second part)
-                person_name = parts[1].title() if len(parts) > 1 else "Unknown"
+                # Skip date parts (2025-08-06 = first 3 parts)
+                # Get name (4th part, index 3) - keep EMEA uppercase
+                person_name = parts[3] if len(parts) > 3 else "Unknown"
+                if person_name.upper() == "EMEA":
+                    person_name = "EMEA"
+                else:
+                    person_name = person_name.title()
                 
-                # Find meeting frequency (third part like "weekly")
-                frequency = parts[2].title() if len(parts) > 2 else ""
+                # Find meeting frequency (5th part, index 4)
+                frequency = parts[4].title() if len(parts) > 4 else ""
                 
-                # Find meeting type (remaining parts like "1-2-1")
-                meeting_type_parts = parts[3:] if len(parts) > 3 else []
+                # Find meeting type (remaining parts like "1-1" → "1:1")
+                meeting_type_parts = parts[5:] if len(parts) > 5 else []
                 meeting_type = ':'.join(meeting_type_parts) if meeting_type_parts else ""
                 
                 # Build title based on what we have
