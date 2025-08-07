@@ -351,7 +351,7 @@ Examples:
     
     # Whisper options
     parser.add_argument('--model', choices=['tiny', 'base', 'small', 'medium', 'large'],
-                       default='base', help='Whisper model to use (default: base)')
+                       help='Whisper model to use (default: from config)')
     
     # Claude options
     parser.add_argument('--meeting-type', choices=['1:1', 'team_meeting', 'forecast', 'customer', 'technical', 'strategic'],
@@ -387,11 +387,14 @@ Examples:
         logging.error(f"Audio file not found: {args.filename}")
         sys.exit(1)
     
+    # Get Whisper model from CLI args or config
+    whisper_model = args.model or config.get('whisper', {}).get('default_model', 'medium')
+    
     # Process the meeting
     results = process_meeting(
         audio_file=audio_file,
         config=config,
-        whisper_model=args.model,
+        whisper_model=whisper_model,
         meeting_type=getattr(args, 'meeting_type', None),
         skip_transcribe=args.skip_transcribe,
         skip_summarize=args.skip_summarize,
