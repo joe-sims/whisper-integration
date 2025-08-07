@@ -5,7 +5,7 @@
 claude:
   # Get your API key from: https://console.anthropic.com/
   # api_key: ""  # Set ANTHROPIC_API_KEY environment variable instead
-  model: "claude-3-5-sonnet-20241022" # Latest Sonnet model with role-based prompting
+  model: "claude-sonnet-4-20250514" # Latest Sonnet 4 model with role-based prompting
   max_tokens: 2000 # Increased for detailed summaries
   temperature: 0.1
   # User context for personalized summaries
@@ -27,7 +27,9 @@ notion:
 
 # Whisper Configuration
 whisper:
-  default_model: "base" # Options: tiny, base, small, medium, large
+  default_model: "medium"    # Sweet spot for M1 MacBook Pro  
+  language: "en"             # 2-5% accuracy improvement
+  temperature: 0.0           # Consistent, deterministic output
 
 # Pipeline Settings
 pipeline:

@@ -85,7 +85,7 @@ def find_audio_file(filename: str) -> Optional[Path]:
 def process_meeting(
     audio_file: Path,
     config: Dict[str, Any],
-    whisper_model: str = 'base',
+    whisper_model: str = 'medium',
     meeting_type: Optional[str] = None,
     skip_transcribe: bool = False,
     skip_summarize: bool = False,
@@ -114,7 +114,16 @@ def process_meeting(
         try:
             logging.info("Step 1: Transcribing audio...")
             transcriber = WhisperTranscriber(model_name=whisper_model)
-            transcript_result = transcriber.transcribe_file(str(audio_file))
+            
+            # Get Whisper settings from config
+            whisper_config = config.get('whisper', {})
+            transcribe_kwargs = {}
+            if whisper_config.get('language'):
+                transcribe_kwargs['language'] = whisper_config['language']
+            if whisper_config.get('temperature') is not None:
+                transcribe_kwargs['temperature'] = whisper_config['temperature']
+                
+            transcript_result = transcriber.transcribe_file(str(audio_file), **transcribe_kwargs)
             results['transcript'] = transcript_result['text']
             logging.info("✓ Transcription completed")
             
@@ -215,7 +224,7 @@ def process_meeting(
             summary_content = f"""Meeting Summary: {audio_file.stem}
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 Audio File: {audio_file}
-Model: Claude ({config.get('claude', {}).get('model', 'claude-3-haiku-20240307')})
+Model: Claude ({config.get('claude', {}).get('model', 'claude-sonnet-4-20250514')})
 
 {'-' * 50}
 SUMMARY
