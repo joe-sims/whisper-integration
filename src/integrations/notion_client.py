@@ -415,8 +415,8 @@ class NotionClient:
         action_items = []
         
         # Look for action item patterns in the summary
-        # Pattern: - [ ] **[Task]** - Owner: [Name] | Due: [Date] | Priority: [High/Med/Low]
-        action_item_pattern = r'- \[ \] \*\*(.*?)\*\*(?: - Owner: (.*?))?(?: \| Due: (.*?))?(?: \| Priority: (.*?))?(?:\n|$)'
+        # Pattern: - [ ] **[Task]** - Owner: [Name] - Due: [Date] - Priority: [High/Med/Low]
+        action_item_pattern = r'- \[ \] \*\*(.*?)\*\*(?: - Owner: (.*?))?(?: - Due: (.*?))?(?: - Priority: (.*?))?(?:\n|$)'
         
         matches = re.findall(action_item_pattern, summary, re.MULTILINE)
         
@@ -448,15 +448,24 @@ class NotionClient:
         simple_matches = re.findall(simple_pattern, summary, re.MULTILINE)
         
         # Add items that weren't caught by the detailed pattern
-        detailed_tasks = {item['task'] for item in action_items}
+        detailed_tasks = set()
+        for item in action_items:
+            # Normalize task text for comparison by removing formatting
+            normalized_task = re.sub(r'\*\*(.*?)\*\*', r'\1', item['task']).strip()
+            detailed_tasks.add(normalized_task)
+        
         for simple_match in simple_matches:
             task_text = simple_match.strip()
-            # Remove any markdown formatting
-            task_text = re.sub(r'\*\*(.*?)\*\*', r'\1', task_text)
+            # Remove any markdown formatting and metadata (Owner:, Due:, etc.)
+            clean_task = re.sub(r'\*\*(.*?)\*\*', r'\1', task_text)
+            clean_task = re.sub(r' - Owner:.*$', '', clean_task)
+            clean_task = re.sub(r' - Due:.*$', '', clean_task)
+            clean_task = re.sub(r' - Priority:.*$', '', clean_task)
+            clean_task = clean_task.strip()
             
-            if task_text not in detailed_tasks and len(task_text) > 5:  # Avoid very short items
+            if clean_task not in detailed_tasks and len(clean_task) > 5:  # Avoid very short items
                 action_items.append({
-                    'task': task_text,
+                    'task': clean_task,
                     'owner': None,
                     'due_date': None,
                     'priority': 'Medium'
