@@ -192,17 +192,19 @@ def process_meeting(
                     logging.info(f"Using specified meeting type: {detected_type.value}")
                 except ValueError:
                     logging.warning(f"Invalid meeting type '{meeting_type}', auto-detecting...")
-                    detected_type = summarizer.detect_meeting_type(results['transcript'])
-                    logging.info(f"Auto-detected meeting type: {detected_type.value}")
+                    detected_type, confidence = summarizer.detect_meeting_type(results['transcript'])
+                    logging.info(f"Auto-detected meeting type: {detected_type.value} (confidence: {confidence:.2f})")
             else:
-                detected_type = summarizer.detect_meeting_type(results['transcript'])
-                logging.info(f"Auto-detected meeting type: {detected_type.value}")
+                detected_type, confidence = summarizer.detect_meeting_type(results['transcript'])
+                logging.info(f"Auto-detected meeting type: {detected_type.value} (confidence: {confidence:.2f})")
             
-            results['summary'] = summarizer.summarize_meeting(
+            summary_result = summarizer.summarize_meeting(
                 transcript=results['transcript'],
                 meeting_type=detected_type
             )
-            results['meeting_type'] = detected_type.value
+            results['summary'] = summary_result['summary']  # Extract just the summary text
+            results['meeting_type'] = summary_result['meeting_type']
+            results['summary_metadata'] = summary_result  # Store full metadata
             logging.info("✓ Summary generated")
         except Exception as e:
             error_msg = f"Summarization failed: {str(e)}"
