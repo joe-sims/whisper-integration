@@ -358,7 +358,7 @@ Examples:
                        help='Whisper model to use (default: from config)')
     
     # Claude options
-    parser.add_argument('--meeting-type', choices=['1:1', 'team_meeting', 'forecast', 'customer', 'technical', 'strategic'],
+    parser.add_argument('--meeting-type', choices=['1:1', 'team_meeting', 'forecast', 'customer', 'technical', 'strategic', 'deal_review'],
                        help='Specify meeting type (auto-detected if not provided)')
     
     # Pipeline control

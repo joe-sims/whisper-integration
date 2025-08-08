@@ -25,6 +25,7 @@ class MeetingType(Enum):
     CUSTOMER = "customer"
     TECHNICAL = "technical"
     STRATEGIC = "strategic"
+    DEAL_REVIEW = "deal_review"
 
 
 class ClaudeSummarizer:
@@ -111,7 +112,9 @@ class ClaudeSummarizer:
             
             MeetingType.TECHNICAL: f"""{base_instruction} You are a principal solutions engineer with expertise in identity verification solutions. You understand complex technical architectures, integration challenges, and can identify both immediate solutions and long-term technical strategies.""",
             
-            MeetingType.STRATEGIC: f"""{base_instruction} You are a strategic business advisor specialising in EMEA markets and enterprise technology sales. You understand regional dynamics, competitive positioning, and how to align technical capabilities with market opportunities."""
+            MeetingType.STRATEGIC: f"""{base_instruction} You are a strategic business advisor specialising in EMEA markets and enterprise technology sales. You understand regional dynamics, competitive positioning, and how to align technical capabilities with market opportunities.""",
+            
+            MeetingType.DEAL_REVIEW: f"""{base_instruction} You are an experienced solutions engineering leader specialising in deal strategy and the Command of the Message methodology. You excel at analysing opportunity dynamics, identifying competitive positioning, and providing actionable coaching on value-based selling approaches."""
         }
     
     def _count_tokens_estimate(self, text: str) -> int:
@@ -162,6 +165,11 @@ class ClaudeSummarizer:
                 'high_weight': ['team', 'everyone', 'all hands', 'standup', 'sync', 'status update'],
                 'medium_weight': ['updates', 'blockers', 'sprint', 'project status', 'coordination'],
                 'low_weight': ['team meeting', 'weekly sync', 'daily standup']
+            },
+            MeetingType.DEAL_REVIEW: {
+                'high_weight': ['deal review', 'opportunity review', 'command of the message', 'value driver', 'discovery'],
+                'medium_weight': ['presenter', 'challenge', 'feedback', 'group input', 'differentiator', 'proof points'],
+                'low_weight': ['presenting', 'deal', 'opportunity', 'insights', 'recommendations']
             }
         }
         
@@ -230,6 +238,44 @@ EXAMPLE OUTPUT:
 
 ## Risk Assessment
 - **High Risk Deals:** TechCorp - legal approval delays may cause slip
+""",
+
+            MeetingType.DEAL_REVIEW: """
+EXAMPLE INPUT: "Ben presented the 1st Formations opportunity - they're a UK company formation agent looking for IDV solutions due to ECCTA compliance. Main challenge is they've finished an Onfido trial but have concerns about POA document coverage and geographic limitations. Group suggested positioning our global coverage as key differentiator."
+
+EXAMPLE OUTPUT:
+## Opportunity Overview
+- **Presenter:** Ben
+- **Customer:** 1st Formations (UK company formation agent)
+- **Stage:** Trial completion/vendor evaluation
+- **Primary Value Driver:** Navigate Regulatory Compliance (ECCTA)
+- **Deal Size/Timeline:** [If mentioned]
+
+## Challenge/Question Presented
+- Onfido trial completed with specific technical limitations
+- POA document coverage concerns and geographic gaps
+- Need to differentiate against incumbent trial solution
+
+## Key Insights & Recommendations
+- **Competitive Positioning:** Leverage global document coverage (195 countries) vs. Onfido limitations
+- **Value Framework:** Regulatory compliance urgency creates buying pressure
+- **Discovery Opportunities:** Quantify cost of geographic coverage gaps
+
+## Command of the Message Application
+- **Primary Value Driver:** Navigate Regulatory Compliance ✓
+- **Secondary Drivers:** Unlock Operational Efficiency at Scale
+- **Key Differentiators:** Global Presence with Local Compliance, Adaptive Verification
+- **Trap-Setting:** "What's the business impact if you can't support your existing customer geographic spread?"
+
+## Next Steps & Actions
+- [ ] **Rapid POC addressing specific Onfido gaps** - Ben - Due: This week
+- [ ] **Demonstrate superior geographic coverage** - Ben - Due: 48hrs
+- [ ] **Follow up on outcomes** - Team Review - Due: Next week
+
+## Follow-up for Next Review
+- POC results and customer feedback
+- Competitive response from Onfido
+- Decision timeline and next steps
 """,
         }
         
@@ -345,6 +391,45 @@ Please note any follow-ups from previous discussions and mark completed items.
 
 ## Next Meeting Focus
 - [Topics for next sync]
+""",
+
+            MeetingType.DEAL_REVIEW: """
+## Deal Review Summary
+
+## Opportunity Overview  
+- **Presenter:** [SE Name]
+- **Customer:** [Company name and brief description]
+- **Stage:** [Current deal stage]
+- **Primary Value Driver:** [Customer Acquisition/Operational Efficiency/Fraud Prevention/Regulatory Compliance]
+- **Deal Size/Timeline:** [If discussed]
+
+## Challenge/Question Presented
+- [Specific challenge or question the presenter brought to the group]
+- [Any competitive or technical concerns]
+
+## Key Insights & Recommendations
+- **Competitive Positioning:** [How to position against competitors]
+- **Value Framework:** [Relevant Before/After scenarios and PBOs]
+- **Discovery Opportunities:** [Questions to ask or information to gather]
+- **Technical Approach:** [Demo strategy or proof points]
+
+## Command of the Message Application
+- **Primary Value Driver:** [Alignment with customer pain]
+- **Secondary Drivers:** [Additional relevant drivers]
+- **Key Differentiators:** [Which unique/comparative differentiators to leverage]
+- **Trap-Setting:** [Specific questions to influence required capabilities]
+
+## Next Steps & Actions
+- [ ] **[Immediate action]** - Owner: [Name] - Due: [Date]
+- [ ] **[Follow-up action]** - Owner: [Name] - Due: [Date]
+
+## Risk Assessment
+- **Deal Risks:** [Technical, competitive, or timeline concerns]
+- **Mitigation Strategies:** [How to address identified risks]
+
+## Follow-up for Next Review
+- [What to report back on]
+- [Success metrics to track]
 """,
         }
         
@@ -518,7 +603,8 @@ Please note any follow-ups from previous discussions and mark completed items.
             MeetingType.FORECAST: "Sales forecast and pipeline reviews",
             MeetingType.CUSTOMER: "Customer calls and demos",
             MeetingType.TECHNICAL: "Technical discussions and architecture reviews",
-            MeetingType.STRATEGIC: "Strategic planning and market discussions"
+            MeetingType.STRATEGIC: "Strategic planning and market discussions",
+            MeetingType.DEAL_REVIEW: "Weekly deal reviews with Command of the Message focus"
         }
         return {meeting_type.value: descriptions[meeting_type] for meeting_type in MeetingType}
     
