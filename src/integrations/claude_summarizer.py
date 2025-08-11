@@ -207,9 +207,13 @@ class ClaudeSummarizer:
         """Provide few-shot examples for consistent output formatting."""
         examples = {
             MeetingType.ONE_ON_ONE: """
-EXAMPLE INPUT: "We discussed Sarah's progress on the enterprise deals. She's doing well but needs help with objection handling. I'll set up coaching sessions and she'll practice with mock scenarios."
+EXAMPLE INPUT: "We discussed Sarah's progress on the enterprise deals. She's doing well but needs help with objection handling. I'll set up coaching sessions and she'll practice with mock scenarios. Sarah mentioned she completed her AWS certification and is excited about the new client project."
 
 EXAMPLE OUTPUT:
+## Personal Highlights
+- **Recent Wins:** Completed AWS certification
+- **Personal Updates:** Excited about upcoming new client project
+
 ## Discussion Highlights
 - **Performance/Development:** Sarah showing strong progress on enterprise deals but identified need for objection handling skills
 - **Current Projects:** Enterprise deal pipeline management
@@ -309,6 +313,11 @@ Please note any follow-ups from previous discussions and mark completed items.
         type_instructions = {
             MeetingType.ONE_ON_ONE: """
 ## 1:1 Meeting Summary
+
+## Personal Highlights
+- **Recent Wins:** [Personal and professional achievements to celebrate]
+- **Personal Updates:** [Life events, interests, or personal context shared]
+- **Recognition:** [Positive feedback from colleagues, customers, or peers]
 
 ## Discussion Highlights
 - **Performance/Development:** [Key points about growth, achievements, or areas for improvement]
