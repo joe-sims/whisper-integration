@@ -308,25 +308,25 @@ FULL TRANSCRIPT
     # Step 4: Archive processed audio file
     if not results['errors'] and not no_archive and config.get('pipeline', {}).get('archive_processed', True):
         try:
-            archive_dir = Path('archive')
-            archive_dir.mkdir(exist_ok=True)
+            processed_dir = Path('processed')
+            processed_dir.mkdir(exist_ok=True)
             
-            # Generate archive filename with processing date
+            # Generate processed filename with processing date
             timestamp = datetime.now().strftime('%Y%m%d')
-            archive_name = f"{audio_file.stem}_processed_{timestamp}{audio_file.suffix}"
-            archive_path = archive_dir / archive_name
+            processed_name = f"{audio_file.stem}_processed_{timestamp}{audio_file.suffix}"
+            processed_path = processed_dir / processed_name
             
-            # Move file to archive (only if it's in audio_input)
+            # Move file to processed (only if it's in audio_input)
             if 'audio_input' in str(audio_file):
                 import shutil
-                shutil.move(str(audio_file), str(archive_path))
-                results['archived_file'] = str(archive_path)
-                logging.info(f"✓ Audio file archived: {archive_path}")
+                shutil.move(str(audio_file), str(processed_path))
+                results['processed_file'] = str(processed_path)
+                logging.info(f"✓ Audio file moved to processed: {processed_path}")
             else:
-                logging.info("Audio file not in audio_input/, skipping archive")
+                logging.info("Audio file not in audio_input/, skipping move to processed")
                 
         except Exception as e:
-            error_msg = f"Failed to archive audio file: {str(e)}"
+            error_msg = f"Failed to move audio file to processed: {str(e)}"
             logging.error(error_msg)
             results['errors'].append(error_msg)
     
@@ -429,8 +429,8 @@ Examples:
     if results['notion_page']:
         print(f"✓ Notion: {results['notion_page']}")
     
-    if results.get('archived_file'):
-        print(f"✓ Archived: {results['archived_file']}")
+    if results.get('processed_file'):
+        print(f"✓ Processed: {results['processed_file']}")
     
     if results['errors']:
         print(f"\n⚠ Errors: {len(results['errors'])}")

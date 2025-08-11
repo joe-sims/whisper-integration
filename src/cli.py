@@ -231,18 +231,108 @@ def transcribe_batch(directory: str, model_name: str, **kwargs) -> None:
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Unified Whisper transcription tool",
+        description="Unified Whisper transcription and archive management tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
+Transcription Examples:
   %(prog)s audio.m4a                          # Transcribe with default base model (text only)
   %(prog)s audio.m4a --model tiny --fast      # Fast transcription with tiny model
   %(prog)s audio.m4a --model large            # High accuracy with large model
   %(prog)s --batch audio_input/               # Transcribe all files in directory
   %(prog)s audio.m4a --timestamps             # Include timestamped segments
+
+Archive Examples:
+  %(prog)s archive --stats                    # Show archive statistics
+  %(prog)s archive --list-duplicates          # List duplicate files
+  %(prog)s archive --clean-duplicates         # Archive duplicate files (keeps latest)
+  %(prog)s archive --clean-duplicates --dry-run  # Preview what would be archived
+  %(prog)s archive --clean-old --days 30      # Archive files older than 30 days
+  %(prog)s archive --clean-audio --days 14    # Archive processed audio older than 14 days
         """
     )
     
+    # Check if this is an archive command
+    if len(sys.argv) > 1 and sys.argv[1] == 'archive':
+        try:
+            from .archive_manager import ArchiveManager
+        except ImportError:
+            # Fallback for when running directly
+            sys.path.append(str(Path(__file__).parent))
+            from archive_manager import ArchiveManager
+        
+        # Create archive subparser
+        archive_parser = argparse.ArgumentParser(description='Archive management for transcriptions and summaries')
+        archive_parser.add_argument('--stats', action='store_true', help='Show file statistics')
+        archive_parser.add_argument('--list-duplicates', action='store_true', help='List duplicate files')
+        archive_parser.add_argument('--clean-duplicates', action='store_true', help='Archive duplicate files')
+        archive_parser.add_argument('--clean-old', action='store_true', help='Archive old files')
+        archive_parser.add_argument('--clean-audio', action='store_true', help='Archive processed audio files')
+        archive_parser.add_argument('--days', type=int, default=30, help='Days threshold for old files (default: 30)')
+        archive_parser.add_argument('--dry-run', action='store_true', help='Show what would be done without making changes')
+        archive_parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
+        
+        # Parse archive arguments (skip 'archive' command)
+        archive_args = archive_parser.parse_args(sys.argv[2:])
+        
+        # Setup logging
+        setup_logging(archive_args.verbose)
+        
+        # Initialize archive manager
+        archive_manager = ArchiveManager()
+        
+        # Handle archive commands
+        if archive_args.stats:
+            archive_manager.print_statistics()
+            return
+        
+        if archive_args.list_duplicates:
+            duplicates = archive_manager.list_duplicates()
+            if duplicates:
+                print("\n🔍 Duplicate Files Found:")
+                for category, dupes in duplicates.items():
+                    print(f"\n{category.upper()}:")
+                    for base_name, files in dupes.items():
+                        print(f"  {base_name}:")
+                        for file in files:
+                            print(f"    - {file}")
+            else:
+                print("\n✅ No duplicate files found!")
+            return
+        
+        if archive_args.clean_duplicates or archive_args.clean_old or archive_args.clean_audio:
+            results = archive_manager.archive_all(
+                remove_duplicates=archive_args.clean_duplicates,
+                archive_old=archive_args.clean_old,
+                days_old=archive_args.days,
+                archive_processed_audio=archive_args.clean_audio,
+                dry_run=archive_args.dry_run
+            )
+            
+            # Print results
+            print(f"\n📋 Archive Results:")
+            if archive_args.clean_duplicates:
+                print(f"   Duplicate transcriptions archived: {results['transcriptions_duplicates']}")
+                print(f"   Duplicate summaries archived: {results['summaries_duplicates']}")
+            if archive_args.clean_old:
+                print(f"   Old transcriptions archived: {results['transcriptions_old']}")
+                print(f"   Old summaries archived: {results['summaries_old']}")
+            if archive_args.clean_audio:
+                print(f"   Processed audio archived: {results['processed_audio_archived']}")
+            print(f"   Empty directories removed: {results['empty_dirs']}")
+            
+            if archive_args.dry_run:
+                print("\n💡 This was a dry run. Use without --dry-run to perform actual archiving.")
+            else:
+                print("\n✅ Archive process completed!")
+            
+            archive_manager.print_statistics()
+            return
+        
+        # If no archive action specified, show help
+        archive_parser.print_help()
+        return
+    
+    # Continue with transcription parsing
     # Input arguments
     parser.add_argument('filename', nargs='?', help='Audio file to transcribe')
     parser.add_argument('--batch', metavar='DIR', help='Transcribe all audio files in directory')
