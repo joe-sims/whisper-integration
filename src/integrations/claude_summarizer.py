@@ -381,10 +381,9 @@ Please note any follow-ups from previous discussions and mark completed items.
 - **Wins/Successes:** [Celebrate achievements]
 - **Current Priorities:** [Top 3-5 team focuses]
 
-## Project Status
-| Project | Owner | Status | Next Milestone | Risks |
-|---------|-------|---------|----------------|-------|
-| [Name] | [SE] | [RAG] | [Date/Action] | [Issues] |
+## Project Updates
+- **[Project Name]:** [Status update and next steps]
+- **[Project Name]:** [Status update and next steps]
 
 ## Cross-functional Topics
 - **Product Updates:** [Relevant product changes]

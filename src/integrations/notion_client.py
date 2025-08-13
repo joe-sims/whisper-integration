@@ -231,11 +231,39 @@ class NotionClient:
             # Split summary into lines and process markdown
             summary_lines = summary.split('\n')
             current_section = []
+            table_lines = []
+            in_table = False
             
             for line in summary_lines:
                 line = line.strip()
                 if not line:
                     continue
+                
+                # Check if this is a table row (contains | but not just separators)
+                is_table_row = ('|' in line and not re.match(r'^[\|\-\s]*$', line))
+                
+                if is_table_row:
+                    # Flush current section before starting table
+                    if current_section and not in_table:
+                        children.append({
+                            "paragraph": {
+                                "rich_text": [{"text": {"content": '\n'.join(current_section)}}]
+                            }
+                        })
+                        current_section = []
+                    
+                    table_lines.append(line)
+                    in_table = True
+                    continue
+                elif in_table:
+                    # End of table - process the collected table lines
+                    if table_lines:
+                        table_block = self._create_table_block(table_lines)
+                        if table_block:
+                            children.append(table_block)
+                        table_lines = []
+                    in_table = False
+                    # Continue processing the current line below
                     
                 # Handle markdown headers
                 if line.startswith('## '):
@@ -323,6 +351,12 @@ class NotionClient:
                         # Regular paragraph text
                         current_section.append(line)
             
+            # Process any remaining table at the end
+            if table_lines:
+                table_block = self._create_table_block(table_lines)
+                if table_block:
+                    children.append(table_block)
+            
             # Flush any remaining content
             if current_section:
                 children.append({
@@ -376,6 +410,90 @@ class NotionClient:
             rich_text = [{"text": {"content": text[:2000]}}]
         
         return rich_text
+    
+    def _create_table_block(self, table_lines: List[str]) -> Optional[Dict[str, Any]]:
+        """Convert markdown table lines to Notion table block."""
+        if not table_lines:
+            return None
+        
+        # Parse table rows
+        rows = []
+        headers = None
+        
+        for line in table_lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            
+            # Skip separator lines - lines containing only |, -, :, and spaces
+            if all(c in '|-: ' for c in stripped) and '-' in stripped and '|' in stripped:
+                continue
+            
+            # Split by | and clean up cells
+            cells = [cell.strip() for cell in line.split('|')]
+            # Remove empty cells at start/end (common in markdown tables)
+            while cells and not cells[0]:
+                cells.pop(0)
+            while cells and not cells[-1]:
+                cells.pop()
+            
+            if cells:
+                if headers is None:
+                    headers = cells
+                else:
+                    rows.append(cells)
+        
+        if not headers:
+            return None
+        
+        # Notion table structure
+        table_children = []
+        
+        # Create header row
+        header_cells = []
+        for header in headers:
+            if '**' in header:
+                rich_text = self._parse_bold_text(header)
+            else:
+                rich_text = [{"text": {"content": header}}]
+            header_cells.append(rich_text)
+        
+        # Create data rows
+        for row in rows:
+            row_cells = []
+            for i, cell in enumerate(row):
+                if i < len(headers):  # Only add cells up to header count
+                    if '**' in cell:
+                        rich_text = self._parse_bold_text(cell)
+                    else:
+                        rich_text = [{"text": {"content": cell}}]
+                    row_cells.append(rich_text)
+            
+            # Pad row if it has fewer cells than headers
+            while len(row_cells) < len(headers):
+                row_cells.append([{"text": {"content": ""}}])
+            
+            table_children.append({
+                "table_row": {
+                    "cells": row_cells
+                }
+            })
+        
+        # Create table block with header
+        return {
+            "table": {
+                "table_width": len(headers),
+                "has_column_header": True,
+                "has_row_header": False,
+                "children": [
+                    {
+                        "table_row": {
+                            "cells": header_cells
+                        }
+                    }
+                ] + table_children
+            }
+        }
     
     def test_connection(self) -> bool:
         """Test connection to Notion API."""
