@@ -5,6 +5,7 @@ Uses original simple truncation approach for long transcripts.
 """
 
 import os
+import re
 import hashlib
 from typing import Dict, Any, Optional, List, Tuple
 from functools import lru_cache
@@ -129,10 +130,92 @@ class ClaudeSummarizer:
         logging.warning(f"Transcript truncated due to length limits ({len(transcript)} > {self.max_transcript_length} chars)")
         return transcript[:self.max_transcript_length] + "\n\n[Transcript truncated...]"
     
-    def detect_meeting_type(self, transcript: str, participants: Optional[List[str]] = None) -> Tuple[MeetingType, float]:
-        """Enhanced meeting type detection with confidence scoring."""
+    def _analyze_filename_for_meeting_type(self, filename: str) -> Dict[MeetingType, float]:
+        """Analyze filename patterns to suggest meeting type."""
+        scores = {meeting_type: 0.0 for meeting_type in MeetingType}
+        
+        # Remove file extension and common prefixes/dates
+        clean_name = filename.replace('.m4a', '').replace('.mp3', '').replace('.wav', '')
+        clean_name = re.sub(r'^\d{4}-\d{2}-\d{2}-?', '', clean_name)  # Remove date prefixes
+        
+        # One-on-one patterns
+        one_on_one_patterns = [
+            r'1-?[o0]n?-?1', r'1-?[to]-?1', r'one-?on-?one', r'121', r'1x1',
+            r'\w+-1-?[o0]n?-?1', r'\w+-1-1', r'\w+-weekly-1-1'
+        ]
+        for pattern in one_on_one_patterns:
+            if re.search(pattern, clean_name):
+                scores[MeetingType.ONE_ON_ONE] += 4.0
+                break
+        
+        # Team meeting patterns
+        team_patterns = [
+            'team', 'sync', 'standup', 'daily', 'weekly-sync', 'all-hands', 
+            'staff', 'group', 'huddle', 'scrum'
+        ]
+        for pattern in team_patterns:
+            if pattern in clean_name:
+                scores[MeetingType.TEAM_MEETING] += 3.0
+                break
+        
+        # Forecast/pipeline patterns
+        forecast_patterns = [
+            'forecast', 'pipeline', 'revenue', 'quarterly', 'qbr', 'commit'
+        ]
+        for pattern in forecast_patterns:
+            if pattern in clean_name:
+                scores[MeetingType.FORECAST] += 3.5
+                break
+        
+        # Customer patterns
+        customer_patterns = [
+            'demo', 'customer', 'client', 'prospect', 'discovery', 'call'
+        ]
+        for pattern in customer_patterns:
+            if pattern in clean_name:
+                scores[MeetingType.CUSTOMER] += 3.0
+                break
+        
+        # Deal review patterns
+        deal_patterns = [
+            'deal-review', 'deal_review', 'dealreview', 'opportunity', 'deal'
+        ]
+        for pattern in deal_patterns:
+            if pattern in clean_name:
+                scores[MeetingType.DEAL_REVIEW] += 4.0
+                break
+        
+        # Technical patterns
+        tech_patterns = [
+            'tech', 'architecture', 'technical', 'design', 'integration'
+        ]
+        for pattern in tech_patterns:
+            if pattern in clean_name:
+                scores[MeetingType.TECHNICAL] += 3.0
+                break
+        
+        # Strategic patterns
+        strategic_patterns = [
+            'strategic', 'strategy', 'planning', 'roadmap', 'vision'
+        ]
+        for pattern in strategic_patterns:
+            if pattern in clean_name:
+                scores[MeetingType.STRATEGIC] += 3.0
+                break
+        
+        return scores
+    
+    def detect_meeting_type(self, transcript: str, participants: Optional[List[str]] = None, filename: Optional[str] = None) -> Tuple[MeetingType, float]:
+        """Enhanced meeting type detection with confidence scoring and filename context."""
         transcript_lower = transcript.lower()
         scores = {meeting_type: 0.0 for meeting_type in MeetingType}
+        
+        # Analyze filename for context if provided
+        if filename:
+            filename_lower = filename.lower()
+            filename_scores = self._analyze_filename_for_meeting_type(filename_lower)
+            for meeting_type, score in filename_scores.items():
+                scores[meeting_type] += score
         
         # Enhanced keyword scoring with weights
         keywords = {
@@ -499,7 +582,8 @@ Please note any follow-ups from previous discussions and mark completed items.
         participants: Optional[List[str]] = None,
         previous_meeting_summary: Optional[str] = None,
         custom_prompt: Optional[str] = None,
-        use_cache: bool = True
+        use_cache: bool = True,
+        filename: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Summarize a meeting transcript using Claude with enhanced role-based prompting.
@@ -512,6 +596,7 @@ Please note any follow-ups from previous discussions and mark completed items.
             previous_meeting_summary: Summary from previous related meeting
             custom_prompt: Custom prompt to override defaults
             use_cache: Whether to use response caching
+            filename: Audio filename for context in meeting type detection
             
         Returns:
             Dict containing summary, detected type, confidence, and metadata
@@ -519,7 +604,7 @@ Please note any follow-ups from previous discussions and mark completed items.
         # Detect meeting type if not provided
         confidence = 1.0
         if meeting_type is None:
-            meeting_type, confidence = self.detect_meeting_type(transcript, participants)
+            meeting_type, confidence = self.detect_meeting_type(transcript, participants, filename)
             logging.info(f"Auto-detected meeting type: {meeting_type.value} (confidence: {confidence:.2f})")
         
         # Check cache first

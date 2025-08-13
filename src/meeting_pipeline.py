@@ -192,15 +192,16 @@ def process_meeting(
                     logging.info(f"Using specified meeting type: {detected_type.value}")
                 except ValueError:
                     logging.warning(f"Invalid meeting type '{meeting_type}', auto-detecting...")
-                    detected_type, confidence = summarizer.detect_meeting_type(results['transcript'])
+                    detected_type, confidence = summarizer.detect_meeting_type(results['transcript'], filename=audio_file.name)
                     logging.info(f"Auto-detected meeting type: {detected_type.value} (confidence: {confidence:.2f})")
             else:
-                detected_type, confidence = summarizer.detect_meeting_type(results['transcript'])
+                detected_type, confidence = summarizer.detect_meeting_type(results['transcript'], filename=audio_file.name)
                 logging.info(f"Auto-detected meeting type: {detected_type.value} (confidence: {confidence:.2f})")
             
             summary_result = summarizer.summarize_meeting(
                 transcript=results['transcript'],
-                meeting_type=detected_type
+                meeting_type=detected_type,
+                filename=audio_file.name
             )
             results['summary'] = summary_result['summary']  # Extract just the summary text
             results['meeting_type'] = summary_result['meeting_type']
@@ -480,10 +481,10 @@ def process_combined_meeting(
                     logging.info(f"Using specified meeting type: {detected_type.value}")
                 except ValueError:
                     logging.warning(f"Invalid meeting type '{meeting_type}', auto-detecting...")
-                    detected_type, confidence = summarizer.detect_meeting_type(results['combined_transcript'])
+                    detected_type, confidence = summarizer.detect_meeting_type(results['combined_transcript'], filename=audio_files[0].name)
                     logging.info(f"Auto-detected meeting type: {detected_type.value} (confidence: {confidence:.2f})")
             else:
-                detected_type, confidence = summarizer.detect_meeting_type(results['combined_transcript'])
+                detected_type, confidence = summarizer.detect_meeting_type(results['combined_transcript'], filename=audio_files[0].name)
                 logging.info(f"Auto-detected meeting type: {detected_type.value} (confidence: {confidence:.2f})")
             
             # Add context about this being a combined meeting
@@ -492,7 +493,8 @@ def process_combined_meeting(
             
             summary_result = summarizer.summarize_meeting(
                 transcript=enhanced_transcript,
-                meeting_type=detected_type
+                meeting_type=detected_type,
+                filename=audio_files[0].name
             )
             results['summary'] = summary_result['summary']
             results['meeting_type'] = summary_result['meeting_type']
